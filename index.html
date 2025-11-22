@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Miner: Deep Space</title>
+    <style>
+        :root {
+            --bg-space: #0b0d17;
+            --ui-dark: rgba(20, 24, 36, 0.95);
+            --ui-border: #364156;
+            --accent-cyan: #64ffda;
+            --accent-orange: #ff9f1c;
+            --accent-purple: #b164ff;
+            --accent-red: #ff5555;
+            --text-main: #e6f1ff;
+            --text-dim: #8892b0;
+            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-space);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Background & Effects --- */
+        .stars {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0));
+            background-repeat: repeat; background-size: 200px 200px;
+            animation: drift 100s linear infinite; opacity: 0.5;
+        }
+        @keyframes drift { from { background-position: 0 0; } to { background-position: 0 1000px; } }
+
+        /* Meteor */
+        .meteor {
+            position: absolute;
+            width: 40px; height: 40px;
+            background: radial-gradient(circle, #fff, transparent);
+            border-radius: 50%;
+            box-shadow: 0 0 20px #fff, -20px 0 40px var(--accent-orange);
+            z-index: 1000;
+            cursor: pointer;
+            pointer-events: auto;
+            transform: rotate(-45deg);
+        }
+        .meteor::after {
+            content: ''; position: absolute; right: -50px; top: 10px;
+            width: 80px; height: 20px;
+            background: linear-gradient(to right, rgba(255,255,255,0.8), transparent);
+            transform: rotate(0deg); /* Tail */
+        }
+
+        /* --- Layout --- */
+        .game-container { display: flex; height: 100%; width: 100%; }
+
+        /* Left: Viewport */
+        .viewport {
+            flex: 2; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; position: relative;
+        }
+
+        /* HUD */
+        .hud-top {
+            position: absolute; top: 20px; text-align: center;
+            background: var(--ui-dark); border: 1px solid var(--ui-border);
+            padding: 15px 30px; border-radius: 8px;
+            box-shadow: 0 0 20px rgba(100, 255, 218, 0.1);
+            z-index: 100;
+        }
+        .currency-label { font-size: 0.8rem; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+        .currency-amount { font-size: 2.5rem; font-weight: 700; color: var(--text-main); }
+        .cps-display { font-size: 0.9rem; color: var(--accent-cyan); margin-top: 5px; }
+
+        /* Navigation Buttons (Bottom Left) */
+        .nav-controls {
+            position: absolute; bottom: 30px; left: 30px;
+            display: flex; gap: 10px;
+        }
+        .nav-btn {
+            background: var(--ui-dark); border: 1px solid var(--ui-border);
+            color: var(--accent-cyan); padding: 10px 20px;
+            cursor: pointer; font-weight: bold; border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover { background: rgba(100, 255, 218, 0.1); border-color: var(--accent-cyan); }
+        .nav-btn.alert { border-color: var(--accent-orange); animation: pulse-btn 2s infinite; }
+        @keyframes pulse-btn { 0% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 159, 28, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0); } }
+
+
+        /* --- Planet System --- */
+        .planet-wrapper {
+            position: relative; width: 340px; height: 340px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .planet-container {
+            position: relative; width: 300px; height: 300px;
+            cursor: pointer; transition: transform 0.1s;
+            z-index: 10; border-radius: 50%;
+        }
+        .planet-container:active { transform: scale(0.98); }
+
+        .planet {
+            width: 100%; height: 100%; border-radius: 50%;
+            background: var(--planet-color, radial-gradient(circle at 30% 30%, #4a90e2, #002f6c));
+            position: relative; overflow: hidden;
+            box-shadow: inset -30px -30px 50px rgba(0,0,0,0.8), 0 0 50px rgba(74, 144, 226, 0.2);
+        }
+        .atmosphere {
+            position: absolute; top: -10px; left: -10px; right: -10px; bottom: -10px;
+            border-radius: 50%; border: 1px solid rgba(100, 255, 218, 0.3);
+            opacity: 0.6; z-index: 0; pointer-events: none;
+            animation: pulse-ring 4s infinite ease-in-out;
+        }
+
+        /* Surface Buildings */
+        .surface-building {
+            position: absolute; width: 8px; height: 8px;
+            background: var(--text-main); border-radius: 1px;
+            box-shadow: 0 0 4px var(--accent-orange);
+            z-index: 2; pointer-events: none;
+        }
+        
+        /* Orbitals (Drones/Probes) */
+        .orbit-ring {
+            position: absolute; top: 50%; left: 50%;
+            border-radius: 50%; border: 1px dashed rgba(255,255,255,0.1);
+            pointer-events: none; z-index: 5;
+            transform: translate(-50%, -50%);
+        }
+        .orbiter {
+            position: absolute; top: -6px; left: 50%;
+            width: 12px; height: 12px; margin-left: -6px;
+            background: var(--accent-cyan); border-radius: 50%;
+            box-shadow: 0 0 5px var(--accent-cyan);
+            animation: spin var(--speed) linear infinite;
+            transform-origin: 50% calc(var(--radius) + 6px);
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- Right Sidebar --- */
+        .sidebar {
+            flex: 1; background: var(--ui-dark); border-left: 1px solid var(--ui-border);
+            display: flex; flex-direction: column; min-width: 340px; max-width: 420px;
+            z-index: 200;
+        }
+        .sidebar-header {
+            padding: 15px; border-bottom: 1px solid var(--ui-border);
+            background: rgba(0,0,0,0.2); 
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer;
+        }
+        .sidebar-header:hover { background: rgba(255,255,255,0.05); }
+        .sidebar-header h2 { margin: 0; font-size: 1rem; color: var(--accent-orange); text-transform: uppercase; letter-spacing: 2px; }
+        
+        /* Tech Research Section */
+        #tech-section {
+            border-bottom: 1px solid var(--ui-border);
+            background: rgba(0,0,0,0.3);
+        }
+        #tech-container {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+            padding: 15px; 
+            max-height: 200px; overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+        #tech-container.collapsed {
+            max-height: 0; padding-top: 0; padding-bottom: 0; overflow: hidden;
+        }
+        
+        .tech-item {
+            position: relative;
+            width: 100%; aspect-ratio: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--ui-border);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s;
+            font-size: 1.2rem;
+        }
+        .tech-item:hover { border-color: var(--accent-cyan); background: rgba(100, 255, 218, 0.1); }
+        .tech-item.purchased { opacity: 0; pointer-events: none; } /* Hide when bought */
+        .tech-item.too-expensive { opacity: 0.5; filter: grayscale(1); }
+
+        /* Global Tooltip Style - FIXED VISIBILITY ISSUE */
+        .global-tooltip {
+            position: fixed; 
+            background: var(--ui-dark);
+            border: 1px solid var(--accent-cyan);
+            padding: 15px; 
+            pointer-events: none;
+            opacity: 0; 
+            z-index: 9999; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            width: 250px;
+            border-radius: 4px;
+            transition: opacity 0.1s;
+            font-family: var(--font-main);
+        }
+        .global-tooltip.active { opacity: 1; }
+        .global-tooltip h4 { margin: 0 0 8px 0; color: var(--accent-cyan); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;}
+        .global-tooltip .cost { color: var(--accent-orange); font-weight: bold; font-size: 0.9rem; margin-bottom: 5px;}
+        .global-tooltip .effect { color: #fff; font-size: 0.85rem; margin-bottom: 10px; }
+        .global-tooltip .desc { color: var(--text-dim); font-size: 0.8rem; font-style: italic; line-height: 1.4; }
+
+        /* Blueprints */
+        .upgrades-list { flex: 1; overflow-y: auto; padding: 10px; }
+
+        .upgrade-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--ui-border);
+            margin-bottom: 8px; padding: 12px;
+            display: flex; align-items: center; cursor: pointer;
+            transition: all 0.2s; position: relative;
+        }
+        .upgrade-card:hover:not(.disabled):not(.locked) { background: rgba(255, 255, 255, 0.07); border-color: var(--accent-cyan); }
+        .upgrade-card.disabled { opacity: 0.6; cursor: not-allowed; }
+        .upgrade-card.locked { background: #000; opacity: 0.8; cursor: default; border-style: dashed; }
+
+        .icon-box {
+            width: 40px; height: 40px; background: rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; margin-right: 12px; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .upgrade-info { flex: 1; }
+        .upgrade-name { font-weight: bold; font-size: 0.95rem; display: block; }
+        .upgrade-cost { color: var(--accent-orange); font-size: 0.85rem; }
+        .upgrade-production { font-size: 0.75rem; color: var(--accent-cyan); margin-left: 5px; }
+        .upgrade-owned { font-size: 1.2rem; font-weight: bold; color: var(--text-dim); margin-left: 10px; }
+
+        /* --- Modals (Travel & Missions) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 2000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-window {
+            background: var(--ui-dark); border: 1px solid var(--ui-border);
+            width: 600px; max-width: 90%; max-height: 80vh;
+            display: flex; flex-direction: column; border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+        }
+        .modal-header {
+            padding: 20px; border-bottom: 1px solid var(--ui-border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-close { cursor: pointer; font-size: 1.5rem; color: var(--text-dim); }
+        .modal-close:hover { color: var(--accent-red); }
+        .modal-content { padding: 20px; overflow-y: auto; }
+
+        /* Mission Styles */
+        .mission-item {
+            background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px;
+            border-left: 3px solid var(--text-dim); display: flex; justify-content: space-between; align-items: center;
+        }
+        .mission-item.completed { border-left-color: var(--accent-cyan); opacity: 0.5; }
+        .mission-btn {
+            background: var(--accent-purple); color: white; border: none;
+            padding: 8px 16px; border-radius: 4px; cursor: pointer;
+        }
+        .mission-btn:disabled { background: #444; cursor: not-allowed; }
+        .mission-timer { color: var(--accent-orange); font-size: 0.9rem; margin-top: 10px; text-align: center;}
+
+        /* Planet List Styles */
+        .planet-item {
+            display: flex; align-items: center; padding: 15px;
+            border: 1px solid var(--ui-border); margin-bottom: 10px;
+            cursor: pointer; transition: 0.2s;
+        }
+        .planet-item:hover { background: rgba(255,255,255,0.05); }
+        .planet-item.active { border-color: var(--accent-cyan); background: rgba(100, 255, 218, 0.05); }
+        .planet-preview { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; }
+        
+        /* Floating Text */
+        .floating-text {
+            position: absolute; color: var(--text-main); font-weight: bold;
+            pointer-events: none; animation: floatUp 1s forwards;
+            font-size: 1.2rem; z-index: 50; text-shadow: 0 0 5px var(--accent-cyan);
+        }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.2); } }
+
+        @media (max-width: 768px) {
+            .game-container { flex-direction: column; }
+            .viewport { flex: 1; min-height: 50vh; }
+            .sidebar { height: 50vh; min-width: 100%; }
+            .planet-wrapper { transform: scale(0.7); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stars"></div>
+
+    <div class="game-container">
+        <!-- Viewport -->
+        <div class="viewport">
+            <div class="hud-top">
+                <div class="currency-label">Accumulated Units</div>
+                <div class="currency-amount" id="score">0</div>
+                <div class="cps-display">
+                    <span id="cps">0.0</span> UNITS / SEC
+                </div>
+            </div>
+
+            <div class="planet-wrapper">
+                <!-- Orbitals injected here -->
+                <div class="planet-container" id="planet" onclick="handleMine(event)">
+                    <div class="atmosphere"></div>
+                    <div class="planet" id="planet-visual">
+                        <!-- Surface buildings injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-controls">
+                <button class="nav-btn" onclick="openModal('missions-modal')">🚀 Expeditions</button>
+                <button class="nav-btn" onclick="openModal('travel-modal')">🪐 Galaxy Map</button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Research Section -->
+            <div class="sidebar-header" onclick="toggleTech()">
+                <h2>🧪 Research Lab <span style="font-size: 0.8em; opacity: 0.7">▼</span></h2>
+            </div>
+            <div id="tech-section">
+                <div id="tech-container" class="collapsed">
+                    <!-- Tech Upgrades Injected Here -->
+                </div>
+            </div>
+
+            <!-- Blueprints Section -->
+            <div class="sidebar-header" style="border-top: 1px solid var(--ui-border); cursor: default;">
+                <h2>📜 Blueprints</h2>
+            </div>
+            <div class="upgrades-list" id="upgrades-container">
+                <!-- Buildings injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="missions-modal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3>Expedition Control</h3>
+                <span class="modal-close" onclick="closeModals()">&times;</span>
+            </div>
+            <div class="modal-content">
+                <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 20px;">
+                    Send crews on dangerous missions to recover lost technology or resources. 
+                    Resets every 12 hours.
+                </p>
+                <div id="mission-list"></div>
+                <div class="mission-timer" id="mission-timer">Next Reset: --:--:--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="travel-modal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3>Galaxy Navigation</h3>
+                <span class="modal-close" onclick="closeModals()">&times;</span>
+            </div>
+            <div class="modal-content">
+                <div id="planet-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Tooltip Container -->
+    <div id="global-tooltip" class="global-tooltip"></div>
+
+    <script>
+        // --- Configuration ---
+        const CONFIG = {
+            fps: 30,
+            autoSave: 10000,
+            missionResetTime: 12 * 60 * 60 * 1000 // 12 hours ms
+        };
+
+        // --- Data Definitions ---
+        const PLANET_TYPES = [
+            { id: 'p1', name: 'Terra Nova', cost: 0, color: 'radial-gradient(circle at 30% 30%, #4a90e2, #002f6c)', multiplier: 1, desc: 'A standard resource-rich world.' },
+            { id: 'p2', name: 'Magma Core', cost: 50000, color: 'radial-gradient(circle at 30% 30%, #ff5555, #5a0000)', multiplier: 1.5, desc: 'High volcanic activity. +50% Production.' },
+            { id: 'p3', name: 'Toxic Prime', cost: 250000, color: 'radial-gradient(circle at 30% 30%, #64ffda, #004433)', multiplier: 2.0, desc: 'Acidic atmosphere. +100% Production.' },
+            { id: 'p4', name: 'Void Shard', cost: 1000000, color: 'radial-gradient(circle at 30% 30%, #b164ff, #220033)', multiplier: 3.0, desc: 'Fragments of reality. +200% Production.' }
+        ];
+
+        const BUILDINGS_DEF = [
+            { id: 'drone', name: 'Auto-Miner Drone', type:'orbital', icon: '🚁', cost: 15, prod: 0.5, desc: 'Chips away at surface.', color: '#64ffda' },
+            { id: 'probe', name: 'Survey Probe', type:'orbital', icon: '🛰️', cost: 100, prod: 4, desc: 'Scans from orbit.', color: '#ff9f1c' },
+            { id: 'extractor', name: 'Mineral Extractor', type:'surface', icon: '🏭', cost: 1100, prod: 12, desc: 'Deep crust mining.', color: '#e6f1ff' },
+            { id: 'solar', name: 'Solar Array', type:'orbital', icon: '☀️', cost: 12000, prod: 45, desc: 'Energy harvesting.', color: '#ffff00' },
+            { id: 'colony', name: 'Colony Hab', type:'surface', icon: '🏠', cost: 130000, prod: 150, desc: 'Human settlement.', color: '#ffffff' },
+            { id: 'freighter', name: 'Cargo Freighter', type:'orbital', icon: '🚀', cost: 1400000, prod: 600, desc: 'Interstellar transport.', color: '#ff5555' }
+        ];
+
+        const UPGRADES_DEF = [
+            // Drones
+            { id: 'u_drone_1', bId: 'drone', req: 1, cost: 200, mult: 2, name: 'Grease the Joints', icon: '🛢️', desc: "Stop the squeaking. It was driving us crazy." },
+            { id: 'u_drone_2', bId: 'drone', req: 20, cost: 2000, mult: 2, name: 'AI Overclock', icon: '💾', desc: "They now mine 20% faster and complain 100% more." },
+            { id: 'u_drone_3', bId: 'drone', req: 50, cost: 20000, mult: 4, name: 'Sentient Drillbits', icon: '🧠', desc: "The drills know where the rocks are hiding." },
+            
+            // Probes
+            { id: 'u_probe_1', bId: 'probe', req: 1, cost: 1000, mult: 2, name: 'Windex Wipe', icon: '🧼', desc: "Clean the lens. Oh wow, look at all that stuff." },
+            { id: 'u_probe_2', bId: 'probe', req: 10, cost: 5000, mult: 2, name: 'RGB Sensors', icon: '🌈', desc: "Makes the data look cooler. Increases efficiency by pure style." },
+            { id: 'u_probe_3', bId: 'probe', req: 50, cost: 50000, mult: 4, name: 'Existential Algorithm', icon: '👁️', desc: "The probes now ponder the meaning of rocks." },
+
+            // Extractors
+            { id: 'u_ext_1', bId: 'extractor', req: 1, cost: 11000, mult: 2, name: 'Fracking Fluid', icon: '🧪', desc: "Environmentally questionable, economically fantastic." },
+            { id: 'u_ext_2', bId: 'extractor', req: 10, cost: 55000, mult: 2, name: 'Vibration Dampeners', icon: '🔇', desc: "Stops the machine from shaking itself to pieces." },
+            { id: 'u_ext_3', bId: 'extractor', req: 50, cost: 550000, mult: 4, name: 'Core Destabilizer', icon: '🌋', desc: "Risks planetary implosion, but look at those yields!" },
+
+            // Solar
+            { id: 'u_sol_1', bId: 'solar', req: 1, cost: 120000, mult: 2, name: 'Mirror Polish', icon: '✨', desc: "Shiny." },
+            { id: 'u_sol_2', bId: 'solar', req: 10, cost: 600000, mult: 2, name: 'Sun Alignment', icon: '📐', desc: "Actually pointing them at the sun helps." },
+            { id: 'u_sol_3', bId: 'solar', req: 50, cost: 6000000, mult: 4, name: 'Dyson Swarm', icon: '🐝', desc: "Block out the sun. We need the power." },
+
+            // Colony
+            { id: 'u_col_1', bId: 'colony', req: 1, cost: 1300000, mult: 2, name: 'Free Coffee', icon: '☕', desc: "Productivity increased by 200%. Jitters by 500%." },
+            { id: 'u_col_2', bId: 'colony', req: 10, cost: 6500000, mult: 2, name: 'Mandatory Overtime', icon: '📋', desc: "The beatings will continue until morale improves." },
+            { id: 'u_col_3', bId: 'colony', req: 50, cost: 65000000, mult: 4, name: 'Genetic Optimization', icon: '🧬', desc: "Miners no longer need sleep. Or love." }
+        ];
+
+        // --- Game State ---
+        let state = {
+            units: 0,
+            totalUnits: 0,
+            currentPlanetId: 'p1',
+            unlockedPlanets: ['p1'],
+            buildings: {}, // { drone: 10 }
+            upgrades: [], // List of purchased upgrade IDs
+            lastMissionReset: Date.now(),
+            completedMissions: [] 
+        };
+
+        // Initialize buildings in state if fresh
+        BUILDINGS_DEF.forEach(b => {
+            if (typeof state.buildings[b.id] === 'undefined') state.buildings[b.id] = 0;
+        });
+
+        // --- DOM ---
+        const els = {
+            score: document.getElementById('score'),
+            cps: document.getElementById('cps'),
+            upgrades: document.getElementById('upgrades-container'),
+            techContainer: document.getElementById('tech-container'),
+            planetVisual: document.getElementById('planet-visual'),
+            planetWrapper: document.querySelector('.planet-wrapper'),
+            missionList: document.getElementById('mission-list'),
+            missionTimer: document.getElementById('mission-timer'),
+            planetList: document.getElementById('planet-list'),
+            tooltip: document.getElementById('global-tooltip')
+        };
+
+        // --- Core Logic ---
+
+        function getMultiplier() {
+            const planet = PLANET_TYPES.find(p => p.id === state.currentPlanetId);
+            return planet ? planet.multiplier : 1;
+        }
+
+        function getBuildingMultiplier(bId) {
+            let mult = 1;
+            state.upgrades.forEach(uId => {
+                const up = UPGRADES_DEF.find(x => x.id === uId);
+                if (up && up.bId === bId) mult *= up.mult;
+            });
+            return mult;
+        }
+
+        function calculateCPS() {
+            let baseCPS = 0;
+            BUILDINGS_DEF.forEach(b => {
+                const count = state.buildings[b.id] || 0;
+                const bMult = getBuildingMultiplier(b.id);
+                baseCPS += (count * b.prod * bMult);
+            });
+            return baseCPS * getMultiplier();
+        }
+
+        function getBuildingCost(bId) {
+            const b = BUILDINGS_DEF.find(x => x.id === bId);
+            const count = state.buildings[bId] || 0;
+            return Math.floor(b.cost * Math.pow(1.15, count));
+        }
+
+        // --- Visuals Manager ---
+
+        // Clears and redraws all orbitals and surface units
+        function renderVisuals() {
+            const existingOrbitals = els.planetWrapper.querySelectorAll('.orbit-ring');
+            existingOrbitals.forEach(el => el.remove());
+            els.planetVisual.innerHTML = ''; 
+
+            let orbitalRadius = 180; 
+
+            BUILDINGS_DEF.forEach(b => {
+                const count = state.buildings[b.id] || 0;
+                if (count === 0) return;
+
+                if (b.type === 'orbital') {
+                    const ring = document.createElement('div');
+                    ring.className = 'orbit-ring';
+                    ring.style.width = `${orbitalRadius * 2}px`;
+                    ring.style.height = `${orbitalRadius * 2}px`;
+                    
+                    const visualCount = Math.min(count, 8);
+                    for(let i=0; i<visualCount; i++) {
+                        const orbiter = document.createElement('div');
+                        orbiter.className = 'orbiter';
+                        orbiter.style.backgroundColor = b.color;
+                        orbiter.style.boxShadow = `0 0 5px ${b.color}`;
+                        orbiter.style.setProperty('--radius', `${orbitalRadius}px`);
+                        orbiter.style.animationDelay = `-${(i / visualCount) * 20}s`; 
+                        orbiter.style.setProperty('--speed', `${20 + (Math.random() * 5)}s`);
+                        ring.appendChild(orbiter);
+                    }
+                    els.planetWrapper.appendChild(ring);
+                    orbitalRadius += 30; 
+                } 
+                else if (b.type === 'surface') {
+                    const visualCount = Math.min(count, 15);
+                    for(let i=0; i<visualCount; i++) {
+                        const dot = document.createElement('div');
+                        dot.className = 'surface-building';
+                        dot.style.background = b.color;
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = Math.random() * 40; 
+                        dot.style.left = `calc(50% + ${Math.cos(angle) * dist}%)`;
+                        dot.style.top = `calc(50% + ${Math.sin(angle) * dist}%)`;
+                        els.planetVisual.appendChild(dot);
+                    }
+                }
+            });
+
+            const currentPlanet = PLANET_TYPES.find(p => p.id === state.currentPlanetId);
+            if (currentPlanet) els.planetVisual.style.background = currentPlanet.color;
+        }
+
+        // --- UI Updates ---
+
+        function updateUI() {
+            els.score.textContent = Math.floor(state.units).toLocaleString();
+            els.cps.textContent = calculateCPS().toFixed(1);
+            updateShop();
+            updateTech();
+        }
+
+        // --- TOOLTIP LOGIC ---
+        function showTooltip(e, u) {
+            els.tooltip.innerHTML = `
+                <h4>${u.name}</h4>
+                <div class="cost">${u.cost.toLocaleString()} Units</div>
+                <div class="effect">Effect: x${u.mult} Multiplier</div>
+                <div class="desc">"${u.desc}"</div>
+            `;
+            els.tooltip.classList.add('active');
+            moveTooltip(e);
+        }
+
+        function hideTooltip() {
+            els.tooltip.classList.remove('active');
+        }
+
+        function moveTooltip(e) {
+            // 250 is tooltip width approx
+            const x = e.clientX - 270; 
+            const y = e.clientY;
+            
+            // Fallback if too far left
+            if (x < 10) {
+                els.tooltip.style.left = (e.clientX + 20) + 'px';
+            } else {
+                els.tooltip.style.left = x + 'px';
+            }
+            els.tooltip.style.top = y + 'px';
+        }
+
+        function updateTech() {
+            els.techContainer.innerHTML = '';
+            let hasVisibleTech = false;
+
+            UPGRADES_DEF.forEach(u => {
+                // Check if already bought
+                if (state.upgrades.includes(u.id)) return; 
+
+                // Check unlock requirement (Must own X amount of building)
+                const buildingCount = state.buildings[u.bId] || 0;
+                if (buildingCount < u.req) return;
+
+                hasVisibleTech = true;
+                const canAfford = state.units >= u.cost;
+                
+                const item = document.createElement('div');
+                item.className = `tech-item ${canAfford ? '' : 'too-expensive'}`;
+                item.innerHTML = `${u.icon}`;
+                
+                item.onmouseenter = (e) => showTooltip(e, u);
+                item.onmouseleave = () => hideTooltip();
+                item.onmousemove = (e) => moveTooltip(e);
+
+                item.onclick = () => {
+                    buyUpgrade(u);
+                    hideTooltip(); // Hide immediately on click
+                };
+                els.techContainer.appendChild(item);
+            });
+            
+            if (!hasVisibleTech && els.techContainer.children.length === 0) {
+                els.techContainer.innerHTML = '<div style="grid-column:span 5; text-align:center; color:#555; font-size:0.8rem;">No research available. Build more structures.</div>';
+            }
+        }
+
+        function buyUpgrade(u) {
+            if (state.units >= u.cost) {
+                state.units -= u.cost;
+                state.upgrades.push(u.id);
+                saveGame();
+                updateUI();
+            }
+        }
+
+        function updateShop() {
+            els.upgrades.innerHTML = '';
+            
+            BUILDINGS_DEF.forEach((b, index) => {
+                const count = state.buildings[b.id] || 0;
+                const cost = getBuildingCost(b.id);
+                const mult = getBuildingMultiplier(b.id);
+                const currentProd = b.prod * mult;
+                
+                const prevBuilding = index > 0 ? BUILDINGS_DEF[index - 1] : null;
+                const prevOwned = prevBuilding ? (state.buildings[prevBuilding.id] || 0) : 10;
+                
+                let isVisible = false;
+                let isMystery = false;
+
+                if (index === 0) isVisible = true; 
+                else if (prevOwned >= 10) isVisible = true; 
+                else if (state.totalUnits >= b.cost * 0.5) isMystery = true; 
+                
+                if (!isVisible && !isMystery) return; 
+
+                const card = document.createElement('div');
+                
+                if (isMystery) {
+                    card.className = 'upgrade-card locked';
+                    card.innerHTML = `
+                        <div class="icon-box">?</div>
+                        <div class="upgrade-info">
+                            <span class="upgrade-name">Unknown Signal</span>
+                            <div class="upgrade-cost">Unlock previous tech to decrypt</div>
+                        </div>
+                    `;
+                } else {
+                    const canAfford = state.units >= cost;
+                    card.className = `upgrade-card ${canAfford ? '' : 'disabled'}`;
+                    card.onclick = () => buyBuilding(b.id);
+                    card.innerHTML = `
+                        <div class="icon-box">${b.icon}</div>
+                        <div class="upgrade-info">
+                            <span class="upgrade-name">${b.name}</span>
+                            <div class="upgrade-cost">${cost.toLocaleString()} Units 
+                                <span class="upgrade-production">(+${currentProd.toFixed(1)}/s)</span>
+                            </div>
+                        </div>
+                        <div class="upgrade-owned">${count}</div>
+                    `;
+                }
+                els.upgrades.appendChild(card);
+            });
+        }
+
+        function buyBuilding(id) {
+            const cost = getBuildingCost(id);
+            if (state.units >= cost) {
+                state.units -= cost;
+                state.buildings[id] = (state.buildings[id] || 0) + 1;
+                renderVisuals();
+                updateUI();
+                saveGame();
+            }
+        }
+
+        function toggleTech() {
+            const container = document.getElementById('tech-container');
+            container.classList.toggle('collapsed');
+        }
+
+        // --- Interaction ---
+
+        function handleMine(e) {
+            const clickVal = 1 * getMultiplier();
+            state.units += clickVal;
+            state.totalUnits += clickVal;
+            
+            spawnFloatingText(e.clientX, e.clientY, `+${clickVal.toFixed(1)}`);
+            updateUI();
+        }
+
+        function spawnFloatingText(x, y, text, color = null) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.textContent = text;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            if(color) el.style.color = color;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        // --- Meteors ---
+        function trySpawnMeteor() {
+            if (Math.random() > 0.05) return;
+
+            const meteor = document.createElement('div');
+            meteor.className = 'meteor';
+            
+            const startY = Math.random() * (window.innerHeight - 100);
+            meteor.style.top = `${startY}px`;
+            meteor.style.left = `-100px`; 
+
+            document.body.appendChild(meteor);
+
+            let posX = -100;
+            let posY = startY;
+            const speed = 3 + Math.random() * 3;
+
+            const move = () => {
+                if (!meteor.isConnected) return; 
+                posX += speed;
+                posY += speed * 0.5; 
+                meteor.style.transform = `translate(${posX}px, ${posY}px) rotate(-45deg)`;
+                
+                if (posX > window.innerWidth + 100) {
+                    meteor.remove();
+                } else {
+                    requestAnimationFrame(move);
+                }
+            };
+            requestAnimationFrame(move);
+
+            meteor.onclick = (e) => {
+                e.stopPropagation();
+                const reward = calculateCPS() * 60 + 100; 
+                state.units += reward;
+                spawnFloatingText(e.clientX, e.clientY, `+${Math.floor(reward)} ☄️`, '#ff5555');
+                meteor.remove();
+            };
+        }
+
+        // --- Modal Systems ---
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+            if (id === 'missions-modal') renderMissions();
+            if (id === 'travel-modal') renderTravel();
+        }
+        function closeModals() {
+            document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
+        }
+
+        // --- Missions ---
+        const MISSIONS_DB = [
+            { id: 1, name: 'Asteroid Belt Scavenge', risk: 0.2, rewardMult: 120, desc: 'Quick scavenge operation.' },
+            { id: 2, name: 'Deep Space Signal', risk: 0.4, rewardMult: 600, desc: 'Investigate an unknown beacon.' },
+            { id: 3, name: 'Pirate Raid', risk: 0.6, rewardMult: 1500, desc: 'Attack a space pirate outpost.' },
+            { id: 4, name: 'Black Hole Research', risk: 0.8, rewardMult: 5000, desc: 'Highly dangerous scientific data.' },
+            { id: 5, name: 'Precursor Ruins', risk: 0.5, rewardMult: 2000, desc: 'Explore ancient alien ruins.' }
+        ];
+
+        function checkMissionReset() {
+            const now = Date.now();
+            if (now - state.lastMissionReset > CONFIG.missionResetTime) {
+                state.lastMissionReset = now;
+                state.completedMissions = [];
+                saveGame();
+            }
+        }
+
+        function renderMissions() {
+            checkMissionReset();
+            els.missionList.innerHTML = '';
+            
+            const now = Date.now();
+            const nextReset = state.lastMissionReset + CONFIG.missionResetTime;
+            const diff = nextReset - now;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            els.missionTimer.textContent = `Next Reset: ${hours}h ${mins}m`;
+
+            MISSIONS_DB.forEach(m => {
+                const isDone = state.completedMissions.includes(m.id);
+                const div = document.createElement('div');
+                div.className = `mission-item ${isDone ? 'completed' : ''}`;
+                
+                const reward = Math.floor((calculateCPS() || 10) * m.rewardMult);
+                
+                div.innerHTML = `
+                    <div>
+                        <strong>${m.name}</strong> <br>
+                        <small style="color: #888">${m.desc}</small><br>
+                        <small style="color: ${m.risk > 0.5 ? '#ff5555' : '#64ffda'}">Risk: ${m.risk * 100}%</small>
+                    </div>
+                    <div>
+                        <div style="text-align:right; margin-bottom:5px; color:#ff9f1c;">Reward: ${reward.toLocaleString()}</div>
+                        <button class="mission-btn" onclick="attemptMission(${m.id}, ${m.risk}, ${reward})" ${isDone ? 'disabled' : ''}>
+                            ${isDone ? 'Done' : 'Deploy'}
+                        </button>
+                    </div>
+                `;
+                els.missionList.appendChild(div);
+            });
+        }
+
+        function attemptMission(id, risk, reward) {
+            if (Math.random() > risk) {
+                state.units += reward;
+                state.totalUnits += reward;
+                alert(`Mission Success! Commander retrieved ${reward.toLocaleString()} Units.`);
+            } else {
+                alert("Mission Failed. The fleet returned empty-handed.");
+            }
+            state.completedMissions.push(id);
+            saveGame();
+            renderMissions();
+            updateUI();
+        }
+
+        // --- Planetary Travel ---
+        function renderTravel() {
+            els.planetList.innerHTML = '';
+            PLANET_TYPES.forEach(p => {
+                const isUnlocked = state.unlockedPlanets.includes(p.id);
+                const isCurrent = state.currentPlanetId === p.id;
+                
+                const div = document.createElement('div');
+                div.className = `planet-item ${isCurrent ? 'active' : ''}`;
+                div.onclick = () => {
+                    if (!isUnlocked) buyPlanet(p.id);
+                    else switchPlanet(p.id);
+                };
+
+                const btnText = isCurrent ? 'Current Location' : (isUnlocked ? 'Travel' : `Unlock (${p.cost.toLocaleString()})`);
+                
+                div.innerHTML = `
+                    <div class="planet-preview" style="background:${p.color}"></div>
+                    <div style="flex:1">
+                        <strong>${p.name}</strong> <span style="color:var(--accent-cyan)">x${p.multiplier} Prod</span><br>
+                        <small style="color:var(--text-dim)">${p.desc}</small>
+                    </div>
+                    <button class="nav-btn" style="font-size:0.8rem">${btnText}</button>
+                `;
+                els.planetList.appendChild(div);
+            });
+        }
+
+        function buyPlanet(id) {
+            const p = PLANET_TYPES.find(x => x.id === id);
+            if (state.units >= p.cost) {
+                state.units -= p.cost;
+                state.unlockedPlanets.push(id);
+                switchPlanet(id);
+                saveGame();
+                renderTravel();
+            }
+        }
+
+        function switchPlanet(id) {
+            state.currentPlanetId = id;
+            renderVisuals();
+            updateUI();
+            closeModals();
+        }
+
+
+        // --- System ---
+        let lastTime = performance.now();
+        let timer = 0;
+
+        function loop(now) {
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            const cps = calculateCPS();
+            if (cps > 0) {
+                const income = cps * dt;
+                state.units += income;
+                state.totalUnits += income;
+            }
+
+            timer += dt;
+            if (timer > 1) { 
+                trySpawnMeteor();
+                timer = 0;
+                updateUI(); 
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        setInterval(() => { saveGame(); }, CONFIG.autoSave);
+
+        function saveGame() {
+            localStorage.setItem('StarMinerDeep', JSON.stringify(state));
+        }
+        function loadGame() {
+            const d = localStorage.getItem('StarMinerDeep');
+            if (d) {
+                try {
+                    const p = JSON.parse(d);
+                    state = { ...state, ...p };
+                    if (!state.upgrades) state.upgrades = [];
+                } catch(e) {}
+            }
+        }
+
+        window.onload = () => {
+            loadGame();
+            BUILDINGS_DEF.forEach(b => { if(state.buildings[b.id] === undefined) state.buildings[b.id] = 0; });
+            
+            renderVisuals();
+            updateUI();
+            requestAnimationFrame(loop);
+        };
+
+    </script>
+</body>
+</html>
