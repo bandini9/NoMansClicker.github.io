@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="google-site-verification" content="mNRMhqWyaP1qvlD8tE6vqmSIHC52WmVRn3k0C2UkTAM" />
     <meta name="description" content="No Man's Clicker is a browser-based idle exploration game. Mine procedurally generated planets, upgrade your fleet, and explore the galaxy.">
-    <title>No Man's Clicker 🚀</title>
+    <title>No Man's Clicker</title>
     <style>
         :root {
             --bg-space: #0b0d17;
@@ -81,10 +80,31 @@
             padding: 15px 30px; border-radius: 8px;
             box-shadow: 0 0 20px rgba(100, 255, 218, 0.1);
             z-index: 100;
+            min-width: 320px;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .currency-label { font-size: 0.8rem; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
-        .currency-amount { font-size: 2.5rem; font-weight: 700; color: var(--text-main); }
-        .cps-display { font-size: 0.9rem; color: var(--accent-cyan); margin-top: 5px; }
+        .hud-section { text-align: left; }
+        .hud-section.right { text-align: right; }
+        
+        .currency-label { font-size: 0.7rem; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+        .currency-amount { font-size: 1.8rem; font-weight: 700; color: var(--text-main); }
+        .resource-amount { font-size: 1.2rem; font-weight: 700; color: var(--accent-orange); }
+        
+        .cps-display { font-size: 0.8rem; color: var(--accent-cyan); margin-top: 5px; }
+        .prestige-badge { 
+            background: var(--accent-purple); color: white; 
+            font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; 
+            vertical-align: middle; display: none; margin-top: 5px;
+        }
+
+        /* Heat Meter */
+        .heat-container {
+            position: absolute; top: 130px; width: 200px; text-align: center; opacity: 0.8;
+        }
+        .heat-bar-bg { width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden; border: 1px solid #444; }
+        .heat-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ff9f1c, #ff5555); transition: width 0.2s; }
+        .heat-label { font-size: 0.7rem; color: var(--accent-red); letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase;}
+
 
         /* Navigation Buttons (Bottom Left) */
         .nav-controls {
@@ -95,11 +115,12 @@
             background: var(--ui-dark); border: 1px solid var(--ui-border);
             color: var(--accent-cyan); padding: 10px 20px;
             cursor: pointer; font-weight: bold; border-radius: 4px;
-            transition: all 0.2s;
+            transition: all 0.2s; display: flex; align-items: center; gap: 8px;
         }
         .nav-btn:hover { background: rgba(100, 255, 218, 0.1); border-color: var(--accent-cyan); }
-        .nav-btn.alert { border-color: var(--accent-orange); animation: pulse-btn 2s infinite; }
-        @keyframes pulse-btn { 0% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 159, 28, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0); } }
+        .nav-btn.station { border-color: var(--accent-orange); color: var(--accent-orange); }
+        .nav-btn.atlas { border-color: var(--accent-purple); color: var(--accent-purple); }
+        .nav-btn.atlas:hover { background: rgba(177, 100, 255, 0.1); }
 
 
         /* --- Planet System --- */
@@ -114,6 +135,33 @@
             z-index: 10; border-radius: 50%;
         }
         .planet-container:active { transform: scale(0.98); }
+        
+        /* Sentinel Style */
+        .planet-container.under-attack {
+            box-shadow: 0 0 30px var(--accent-red);
+            animation: shake 0.5s infinite;
+        }
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+
+        .sentinel-drone {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 120px; height: 120px;
+            background: radial-gradient(circle, #222, #000);
+            border: 2px solid var(--accent-red); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 20; cursor: crosshair;
+            box-shadow: 0 0 20px var(--accent-red);
+            animation: droneFloat 2s infinite ease-in-out;
+        }
+        .sentinel-eye {
+            width: 40px; height: 40px; background: var(--accent-red);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--accent-red);
+            animation: eyeScan 3s infinite;
+        }
+        @keyframes droneFloat { 0%, 100% { transform: translate(-50%, -55%); } 50% { transform: translate(-50%, -45%); } }
+        @keyframes eyeScan { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.8); opacity: 0.8; } }
+
 
         .planet {
             width: 100%; height: 100%; border-radius: 50%;
@@ -168,18 +216,18 @@
         .sidebar-header:hover { background: rgba(255,255,255,0.05); }
         .sidebar-header h2 { margin: 0; font-size: 1rem; color: var(--accent-orange); text-transform: uppercase; letter-spacing: 2px; }
         
-        /* Tech Research Section */
-        #tech-section {
+        /* Research & Multi-Tool Sections */
+        #tech-section, #multitool-section {
             border-bottom: 1px solid var(--ui-border);
             background: rgba(0,0,0,0.3);
         }
-        #tech-container {
+        #tech-container, #multitool-container {
             display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
             padding: 15px; 
             max-height: 200px; overflow-y: auto;
             transition: max-height 0.3s ease;
         }
-        #tech-container.collapsed {
+        #tech-container.collapsed, #multitool-container.collapsed {
             max-height: 0; padding-top: 0; padding-bottom: 0; overflow: hidden;
         }
         
@@ -196,7 +244,7 @@
         .tech-item.purchased { opacity: 0; pointer-events: none; } /* Hide when bought */
         .tech-item.too-expensive { opacity: 0.5; filter: grayscale(1); }
 
-        /* Global Tooltip Style - FIXED VISIBILITY ISSUE */
+        /* Global Tooltip Style */
         .global-tooltip {
             position: fixed; 
             background: var(--ui-dark);
@@ -242,7 +290,7 @@
         .upgrade-production { font-size: 0.75rem; color: var(--accent-cyan); margin-left: 5px; }
         .upgrade-owned { font-size: 1.2rem; font-weight: bold; color: var(--text-dim); margin-left: 10px; }
 
-        /* --- Modals (Travel & Missions) --- */
+        /* --- Modals (Travel & Missions & Atlas & Station) --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
@@ -263,6 +311,21 @@
         .modal-close { cursor: pointer; font-size: 1.5rem; color: var(--text-dim); }
         .modal-close:hover { color: var(--accent-red); }
         .modal-content { padding: 20px; overflow-y: auto; }
+
+        /* Station Trade Row */
+        .trade-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; background: rgba(255,255,255,0.03);
+            margin-bottom: 5px; border: 1px solid var(--ui-border);
+        }
+        .trade-row:hover { background: rgba(255,255,255,0.06); }
+        .sell-btn {
+            background: var(--ui-dark); border: 1px solid var(--accent-orange);
+            color: var(--accent-orange); padding: 5px 10px; cursor: pointer;
+            font-weight: bold; transition: 0.2s;
+        }
+        .sell-btn:hover { background: var(--accent-orange); color: #000; }
+        .sell-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #555; color: #555; background: transparent; }
 
         /* Mission Styles */
         .mission-item {
@@ -311,10 +374,25 @@
         <!-- Viewport -->
         <div class="viewport">
             <div class="hud-top">
-                <div class="currency-label">Accumulated Units</div>
-                <div class="currency-amount" id="score">0</div>
-                <div class="cps-display">
-                    <span id="cps">0.0</span> UNITS / SEC
+                <div class="hud-section">
+                    <div class="currency-label">Units</div>
+                    <div class="currency-amount" id="score">0</div>
+                </div>
+                <div class="hud-section right">
+                    <div class="currency-label" id="res-label">Carbon</div>
+                    <div class="resource-amount" id="res-count">0</div>
+                    <div class="cps-display">
+                        <span id="cps">0.0</span> / SEC
+                    </div>
+                    <div id="prestige-badge" class="prestige-badge">SIMULATION x1</div>
+                </div>
+            </div>
+
+            <!-- Heat Meter (Sentinel System) -->
+            <div class="heat-container">
+                <div class="heat-label">Threat Level</div>
+                <div class="heat-bar-bg">
+                    <div class="heat-bar-fill" id="heat-bar"></div>
                 </div>
             </div>
 
@@ -325,17 +403,33 @@
                     <div class="planet" id="planet-visual">
                         <!-- Surface buildings injected here -->
                     </div>
+                    <!-- Sentinel Overlay (Hidden by default) -->
+                    <div id="sentinel-drone" class="sentinel-drone" style="display:none;" onclick="damageSentinel(event)">
+                        <div class="sentinel-eye"></div>
+                    </div>
                 </div>
             </div>
 
             <div class="nav-controls">
+                <button class="nav-btn station" onclick="openModal('station-modal')">🛰️ Space Station</button>
                 <button class="nav-btn" onclick="openModal('missions-modal')">🚀 Expeditions</button>
                 <button class="nav-btn" onclick="openModal('travel-modal')">🪐 Galaxy Map</button>
+                <button class="nav-btn atlas" onclick="openModal('atlas-modal')">🌀 The Atlas</button>
             </div>
         </div>
 
         <!-- Sidebar -->
         <div class="sidebar">
+            <!-- Multi-Tool Section (New) -->
+            <div class="sidebar-header" onclick="toggleMultiTool()">
+                <h2>🔫 Multi-Tool <span style="font-size: 0.8em; opacity: 0.7">▼</span></h2>
+            </div>
+            <div id="multitool-section">
+                <div id="multitool-container" class="collapsed">
+                    <!-- Multi-Tool Upgrades Injected Here -->
+                </div>
+            </div>
+
             <!-- Research Section -->
             <div class="sidebar-header" onclick="toggleTech()">
                 <h2>🧪 Research Lab <span style="font-size: 0.8em; opacity: 0.7">▼</span></h2>
@@ -357,6 +451,52 @@
     </div>
 
     <!-- Modals -->
+    <!-- Alert Modal -->
+    <div class="modal-overlay" id="alert-modal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3>System Alert</h3>
+                <span class="modal-close" onclick="closeModals()">&times;</span>
+            </div>
+            <div class="modal-content" style="text-align: center;">
+                <p id="alert-message" style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-main);">Message</p>
+                <button class="nav-btn" onclick="closeModals()" style="width: 100%; justify-content: center;">ACKNOWLEDGE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-window" style="border-color: var(--accent-red);">
+            <div class="modal-header">
+                <h3 style="color: var(--accent-red);">Confirmation Required</h3>
+                <span class="modal-close" onclick="closeModals()">&times;</span>
+            </div>
+            <div class="modal-content" style="text-align: center;">
+                <p id="confirm-message" style="margin-bottom: 20px; color: var(--text-main);">Are you sure?</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button class="nav-btn" onclick="closeModals()">CANCEL</button>
+                    <button class="nav-btn" style="border-color: var(--accent-red); color: var(--accent-red);" id="confirm-yes-btn">CONFIRM</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="station-modal">
+        <div class="modal-window" style="border-color: var(--accent-orange);">
+            <div class="modal-header">
+                <h3 style="color: var(--accent-orange);">Galactic Trade Terminal</h3>
+                <span class="modal-close" onclick="closeModals()">&times;</span>
+            </div>
+            <div class="modal-content">
+                <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 20px;">
+                    Sell gathered resources for Units.
+                </p>
+                <div id="station-list"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="missions-modal">
         <div class="modal-window">
             <div class="modal-header">
@@ -381,7 +521,32 @@
                 <span class="modal-close" onclick="closeModals()">&times;</span>
             </div>
             <div class="modal-content">
-                <div id="planet-list"></div>
+                <div style="margin-bottom: 10px; display: flex; justify-content: flex-end;">
+                    <button class="nav-btn" id="scan-btn" onclick="scanNewSystem()" style="font-size: 0.8rem; border-color: var(--accent-cyan);">📡 Scan Sector (100k)</button>
+                </div>
+                <div id="planet-list" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="atlas-modal">
+        <div class="modal-window" style="border-color: var(--accent-purple); box-shadow: 0 0 50px rgba(177, 100, 255, 0.2);">
+            <div class="modal-header">
+                <h3 style="color: var(--accent-purple);">Atlas Interface</h3>
+                <span class="modal-close" onclick="closeModals()">&times;</span>
+            </div>
+            <div class="modal-content" style="text-align: center;">
+                <p style="font-size: 1.1rem;">"The simulation must be reset."</p>
+                <div style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--ui-border);">
+                    <div style="color: var(--text-dim);">Current Prestige Multiplier</div>
+                    <div style="font-size: 2rem; color: var(--accent-purple);" id="atlas-current-mult">x1.0</div>
+                </div>
+                <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 20px;">
+                    Resetting will remove all <b>Units</b>, <b>Resources</b>, and <b>Buildings</b>.<br>
+                    You will keep your <b>Planetary Charts</b> and gain a permanent <b>+50% Production Bonus</b>.
+                </p>
+                <p style="color: var(--accent-orange); font-weight: bold;">Cost: 1,000,000 Units</p>
+                <button class="nav-btn atlas" style="width: 100%; font-size: 1.2rem; margin-top: 10px;" onclick="attemptPrestige()">INITIATE RESET</button>
             </div>
         </div>
     </div>
@@ -394,16 +559,39 @@
         const CONFIG = {
             fps: 30,
             autoSave: 10000,
-            missionResetTime: 12 * 60 * 60 * 1000 // 12 hours ms
+            missionResetTime: 12 * 60 * 60 * 1000, // 12 hours ms
+            heatGain: 5,     // Heat per click
+            heatDecay: 2,    // Heat lost per sec
+            sentinelHp: 15,   // Clicks to kill
+            scanCost: 100000 // Units to scan new system
         };
 
         // --- Data Definitions ---
-        const PLANET_TYPES = [
-            { id: 'p1', name: 'Terra Nova', cost: 0, color: 'radial-gradient(circle at 30% 30%, #4a90e2, #002f6c)', multiplier: 1, desc: 'A standard resource-rich world.' },
-            { id: 'p2', name: 'Magma Core', cost: 50000, color: 'radial-gradient(circle at 30% 30%, #ff5555, #5a0000)', multiplier: 1.5, desc: 'High volcanic activity. +50% Production.' },
-            { id: 'p3', name: 'Toxic Prime', cost: 250000, color: 'radial-gradient(circle at 30% 30%, #64ffda, #004433)', multiplier: 2.0, desc: 'Acidic atmosphere. +100% Production.' },
-            { id: 'p4', name: 'Void Shard', cost: 1000000, color: 'radial-gradient(circle at 30% 30%, #b164ff, #220033)', multiplier: 3.0, desc: 'Fragments of reality. +200% Production.' }
+        // STATIC Core Systems (Tutorial)
+        const CORE_PLANETS = [
+            { id: 'p1', name: 'Terra Nova', cost: 0, color: 'radial-gradient(circle at 30% 30%, #4a90e2, #002f6c)', multiplier: 1, resource: 'carbon', resName: 'Carbon', desc: 'A lush world rich in Carbon.' },
+            { id: 'p2', name: 'Magma Core', cost: 50000, color: 'radial-gradient(circle at 30% 30%, #ff5555, #5a0000)', multiplier: 1.5, resource: 'ferrite', resName: 'Ferrite', desc: 'Volcanic. Rich in Ferrite Dust.' },
+            { id: 'p3', name: 'Toxic Prime', cost: 250000, color: 'radial-gradient(circle at 30% 30%, #64ffda, #004433)', multiplier: 2.0, resource: 'sodium', resName: 'Sodium', desc: 'Acidic. Rich in Sodium.' },
+            { id: 'p4', name: 'Void Shard', cost: 1000000, color: 'radial-gradient(circle at 30% 30%, #b164ff, #220033)', multiplier: 3.0, resource: 'chromatic', resName: 'Chromatic Metal', desc: 'Anomalous. Chromatic Metal detected.' }
         ];
+
+        // Procedural Generation Tables
+        const PROC_NAMES_PREFIX = ['Alpha', 'Omicron', 'Xentio', 'Vex', 'Kora', 'Zeta', 'Nodan'];
+        const PROC_NAMES_SUFFIX = ['Prime', 'Major', 'VI', 'Star', 'Moon', 'X', 'Zero'];
+        
+        const PROC_TYPES = [
+            { type: 'Lush', color: '#4a90e2', resource: 'carbon', resName: 'Carbon', minMult: 0.8, maxMult: 1.2 },
+            { type: 'Scorched', color: '#ff5555', resource: 'ferrite', resName: 'Ferrite', minMult: 1.3, maxMult: 1.8 },
+            { type: 'Toxic', color: '#64ffda', resource: 'sodium', resName: 'Sodium', minMult: 1.8, maxMult: 2.5 },
+            { type: 'Anomalous', color: '#b164ff', resource: 'chromatic', resName: 'Chromatic Metal', minMult: 2.5, maxMult: 4.0 }
+        ];
+
+        const RESOURCES = {
+            'carbon': { name: 'Carbon', value: 1, icon: '🌿' },
+            'ferrite': { name: 'Ferrite Dust', value: 4, icon: '🪨' },
+            'sodium': { name: 'Sodium', value: 10, icon: '⚠️' },
+            'chromatic': { name: 'Chromatic Metal', value: 50, icon: '💠' }
+        };
 
         const BUILDINGS_DEF = [
             { id: 'drone', name: 'Auto-Miner Drone', type:'orbital', icon: '🚁', cost: 15, prod: 0.5, desc: 'Chips away at surface.', color: '#64ffda' },
@@ -441,42 +629,100 @@
             { id: 'u_col_3', bId: 'colony', req: 50, cost: 65000000, mult: 4, name: 'Genetic Optimization', icon: '🧬', desc: "Miners no longer need sleep. Or love." }
         ];
 
+        // NEW: Multi-Tool Upgrades
+        const MULTI_TOOL_DEF = [
+            { id: 'mt_visor', name: 'Visor Analysis', icon: '🎯', cost: 500, desc: '+10 Base Click Power per Discovered Planet.', flavor: "Knowledge is profit." },
+            { id: 'mt_drill', name: 'Optical Drill', icon: '💎', cost: 2000, desc: '+1% Click Power per Survey Probe owned.', flavor: "Focuses the beam using planetary data arrays." },
+            { id: 'mt_cloak', name: 'Cloaking Device', icon: '👻', cost: 5000, desc: '-30% Heat Generation per click.', flavor: "They can't arrest what they can't see." },
+            { id: 'mt_heat', name: 'Overheat Module', icon: '🔥', cost: 10000, desc: 'Higher Heat = Higher Click Yield (Risk/Reward).', flavor: "Safety limiters disabled. Component melting imminent." },
+            { id: 'mt_bolt', name: 'Boltcaster SMG', icon: '🔫', cost: 15000, desc: 'Deals 3x Damage to Sentinels.', flavor: "For aggressive negotiations." },
+            { id: 'mt_mino', name: 'Minotaur AI', icon: '🤖', cost: 50000, desc: 'Auto-damages Sentinels (1 dmg/sec).', flavor: "Clumsy, but enthusiastic." },
+            { id: 'mt_def', name: 'Settlement Defense', icon: '🛡️', cost: 100000, desc: 'Sentinels have 50% less HP if you own 50+ Colonies.', flavor: "The colonists throw rocks at the drones." },
+            { id: 'mt_terr', name: 'Terrain Manipulator', icon: '💥', cost: 250000, desc: '1% Chance on click to instantly mine 10s of idle production.', flavor: "Deletes matter. Questions later." }
+        ];
+
         // --- Game State ---
         let state = {
             units: 0,
             totalUnits: 0,
+            inventory: { carbon: 0, ferrite: 0, sodium: 0, chromatic: 0 },
             currentPlanetId: 'p1',
-            unlockedPlanets: ['p1'],
-            buildings: {}, // { drone: 10 }
-            upgrades: [], // List of purchased upgrade IDs
+            unlockedPlanets: ['p1'], // IDs of unlocked systems
+            discoveredSystems: [], // Stores full objects of procedural planets
+            planetBuildings: {}, 
+            bases: [], // IDs of planets with bases (limit 10)
+            upgrades: [], 
+            multiTool: [], 
             lastMissionReset: Date.now(),
-            completedMissions: [] 
+            completedMissions: [],
+            heat: 0,
+            prestige: 0,
+            prestigeMult: 1
         };
 
-        // Initialize buildings in state if fresh
-        BUILDINGS_DEF.forEach(b => {
-            if (typeof state.buildings[b.id] === 'undefined') state.buildings[b.id] = 0;
-        });
+        // Local vars
+        let sentinelActive = false;
+        let currentSentinelHp = 0;
+        let minotaurTimer = 0; 
 
         // --- DOM ---
         const els = {
             score: document.getElementById('score'),
+            resCount: document.getElementById('res-count'),
+            resLabel: document.getElementById('res-label'),
             cps: document.getElementById('cps'),
+            prestigeBadge: document.getElementById('prestige-badge'),
             upgrades: document.getElementById('upgrades-container'),
             techContainer: document.getElementById('tech-container'),
+            mtContainer: document.getElementById('multitool-container'),
             planetVisual: document.getElementById('planet-visual'),
+            planetContainer: document.querySelector('.planet-container'),
             planetWrapper: document.querySelector('.planet-wrapper'),
             missionList: document.getElementById('mission-list'),
             missionTimer: document.getElementById('mission-timer'),
             planetList: document.getElementById('planet-list'),
-            tooltip: document.getElementById('global-tooltip')
+            tooltip: document.getElementById('global-tooltip'),
+            heatBar: document.getElementById('heat-bar'),
+            sentinelDrone: document.getElementById('sentinel-drone'),
+            atlasMult: document.getElementById('atlas-current-mult'),
+            stationList: document.getElementById('station-list'),
+            scanBtn: document.getElementById('scan-btn')
         };
+
+        // --- HELPER MODALS ---
+        function showAlert(msg) {
+            document.getElementById('alert-message').textContent = msg;
+            openModal('alert-modal');
+        }
+
+        function showConfirm(msg, onConfirm) {
+            document.getElementById('confirm-message').textContent = msg;
+            const btn = document.getElementById('confirm-yes-btn');
+            // Remove old listeners to prevent stacking calls
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.onclick = () => {
+                onConfirm();
+                closeModals();
+            };
+            openModal('confirm-modal');
+        }
 
         // --- Core Logic ---
 
+        function getPlanetDef(id) {
+            const core = CORE_PLANETS.find(p => p.id === id);
+            if(core) return core;
+            const proc = state.discoveredSystems.find(p => p.id === id);
+            if(proc) return proc;
+            return CORE_PLANETS[0];
+        }
+
         function getMultiplier() {
-            const planet = PLANET_TYPES.find(p => p.id === state.currentPlanetId);
-            return planet ? planet.multiplier : 1;
+            const planet = getPlanetDef(state.currentPlanetId);
+            const pMult = planet ? planet.multiplier : 1;
+            return pMult * state.prestigeMult;
         }
 
         function getBuildingMultiplier(bId) {
@@ -488,34 +734,94 @@
             return mult;
         }
 
-        function calculateCPS() {
-            let baseCPS = 0;
-            BUILDINGS_DEF.forEach(b => {
-                const count = state.buildings[b.id] || 0;
-                const bMult = getBuildingMultiplier(b.id);
-                baseCPS += (count * b.prod * bMult);
+        function calculateResourceGain(dt) {
+            if (sentinelActive) return;
+            state.unlockedPlanets.forEach(planetId => {
+                const buildings = state.planetBuildings[planetId];
+                if (!buildings) return;
+                const planetDef = getPlanetDef(planetId);
+                const pMult = planetDef ? planetDef.multiplier : 1;
+                const resourceType = planetDef.resource;
+                
+                let planetCPS = 0;
+                BUILDINGS_DEF.forEach(b => {
+                    const count = buildings[b.id] || 0;
+                    const bMult = getBuildingMultiplier(b.id); 
+                    planetCPS += (count * b.prod * bMult);
+                });
+
+                const gain = planetCPS * pMult * state.prestigeMult * dt;
+                if(gain > 0) {
+                    if(!state.inventory[resourceType]) state.inventory[resourceType] = 0;
+                    state.inventory[resourceType] += gain;
+                }
             });
-            return baseCPS * getMultiplier();
+        }
+        
+        function getPlanetCPS(id) {
+            const buildings = state.planetBuildings[id] || {};
+            const planetDef = getPlanetDef(id);
+            const pMult = planetDef ? planetDef.multiplier : 1;
+            
+            let planetCPS = 0;
+            BUILDINGS_DEF.forEach(b => {
+                const count = buildings[b.id] || 0;
+                const bMult = getBuildingMultiplier(b.id);
+                planetCPS += (count * b.prod * bMult);
+            });
+            
+            return planetCPS * pMult * state.prestigeMult;
+        }
+
+        function getCurrentPlanetCPS() {
+            return getPlanetCPS(state.currentPlanetId);
+        }
+
+        function calculateClickPower() {
+            let power = 1;
+            if (state.multiTool.includes('mt_visor')) {
+                power += (state.unlockedPlanets.length * 10);
+            }
+            let mult = getMultiplier(); 
+            if (state.multiTool.includes('mt_drill')) {
+                let totalProbes = 0;
+                Object.values(state.planetBuildings).forEach(planetBuilds => {
+                    totalProbes += (planetBuilds['probe'] || 0);
+                });
+                mult *= (1 + (totalProbes * 0.01));
+            }
+            if (state.multiTool.includes('mt_heat')) {
+                mult *= (1 + (state.heat / 50)); 
+            }
+            return power * mult;
+        }
+
+        function getCurrentPlanetBuildings() {
+            if (!state.planetBuildings[state.currentPlanetId]) {
+                state.planetBuildings[state.currentPlanetId] = {};
+                BUILDINGS_DEF.forEach(b => state.planetBuildings[state.currentPlanetId][b.id] = 0);
+            }
+            return state.planetBuildings[state.currentPlanetId];
         }
 
         function getBuildingCost(bId) {
             const b = BUILDINGS_DEF.find(x => x.id === bId);
-            const count = state.buildings[bId] || 0;
+            const currentBuildings = getCurrentPlanetBuildings();
+            const count = currentBuildings[bId] || 0;
             return Math.floor(b.cost * Math.pow(1.15, count));
         }
 
         // --- Visuals Manager ---
-
-        // Clears and redraws all orbitals and surface units
         function renderVisuals() {
             const existingOrbitals = els.planetWrapper.querySelectorAll('.orbit-ring');
             existingOrbitals.forEach(el => el.remove());
             els.planetVisual.innerHTML = ''; 
 
             let orbitalRadius = 180; 
+            const currentBuildings = getCurrentPlanetBuildings();
 
             BUILDINGS_DEF.forEach(b => {
-                const count = state.buildings[b.id] || 0;
+                const count = currentBuildings[b.id] || 0;
                 if (count === 0) return;
 
                 if (b.type === 'orbital') {
@@ -523,7 +829,6 @@
                     ring.className = 'orbit-ring';
                     ring.style.width = `${orbitalRadius * 2}px`;
                     ring.style.height = `${orbitalRadius * 2}px`;
-                    
                     const visualCount = Math.min(count, 8);
                     for(let i=0; i<visualCount; i++) {
                         const orbiter = document.createElement('div');
@@ -553,26 +858,61 @@
                 }
             });
 
-            const currentPlanet = PLANET_TYPES.find(p => p.id === state.currentPlanetId);
-            if (currentPlanet) els.planetVisual.style.background = currentPlanet.color;
+            const currentPlanet = getPlanetDef(state.currentPlanetId);
+            if (currentPlanet) {
+                if(currentPlanet.type && !currentPlanet.cost) { 
+                     els.planetVisual.style.background = `radial-gradient(circle at 30% 30%, ${currentPlanet.color}, #000)`;
+                } else {
+                     els.planetVisual.style.background = currentPlanet.color;
+                }
+            }
         }
 
         // --- UI Updates ---
 
         function updateUI() {
+            // Update Units
             els.score.textContent = Math.floor(state.units).toLocaleString();
-            els.cps.textContent = calculateCPS().toFixed(1);
+            
+            // Update Resource HUD for CURRENT Planet
+            const planet = getPlanetDef(state.currentPlanetId);
+            const resType = planet ? planet.resource : 'carbon';
+            const resName = planet ? planet.resName : 'Carbon';
+            
+            els.resLabel.textContent = resName;
+            els.resCount.textContent = Math.floor(state.inventory[resType] || 0).toLocaleString();
+            
+            // Display CPS for current planet context
+            els.cps.textContent = getCurrentPlanetCPS().toFixed(1);
+            
+            // Heat UI
+            els.heatBar.style.width = state.heat + '%';
+            
+            // Prestige Badge
+            if (state.prestige > 0) {
+                els.prestigeBadge.style.display = 'inline-block';
+                els.prestigeBadge.textContent = `SIMULATION x${state.prestigeMult.toFixed(1)}`;
+            }
+
+            // Atlas UI
+            els.atlasMult.textContent = `x${state.prestigeMult.toFixed(1)}`;
+
             updateShop();
             updateTech();
+            updateMultiTool();
+            updateStation();
         }
 
         // --- TOOLTIP LOGIC ---
-        function showTooltip(e, u) {
+        function showTooltip(e, u, isMT = false) {
+            let effectText = isMT ? u.desc : `Effect: x${u.mult} Multiplier`;
+            let descText = isMT ? `"${u.flavor}"` : `"${u.desc}"`;
+
             els.tooltip.innerHTML = `
                 <h4>${u.name}</h4>
                 <div class="cost">${u.cost.toLocaleString()} Units</div>
-                <div class="effect">Effect: x${u.mult} Multiplier</div>
-                <div class="desc">"${u.desc}"</div>
+                <div class="effect">${effectText}</div>
+                <div class="desc">${descText}</div>
             `;
             els.tooltip.classList.add('active');
             moveTooltip(e);
@@ -583,45 +923,39 @@
         }
 
         function moveTooltip(e) {
-            // 250 is tooltip width approx
             const x = e.clientX - 270; 
             const y = e.clientY;
-            
-            // Fallback if too far left
-            if (x < 10) {
-                els.tooltip.style.left = (e.clientX + 20) + 'px';
-            } else {
-                els.tooltip.style.left = x + 'px';
-            }
+            if (x < 10) els.tooltip.style.left = (e.clientX + 20) + 'px';
+            else els.tooltip.style.left = x + 'px';
             els.tooltip.style.top = y + 'px';
         }
 
         function updateTech() {
             els.techContainer.innerHTML = '';
             let hasVisibleTech = false;
+            const currentBuildings = getCurrentPlanetBuildings();
 
             UPGRADES_DEF.forEach(u => {
-                // Check if already bought
                 if (state.upgrades.includes(u.id)) return; 
-
-                // Check unlock requirement (Must own X amount of building)
-                const buildingCount = state.buildings[u.bId] || 0;
+                const buildingCount = currentBuildings[u.bId] || 0;
                 if (buildingCount < u.req) return;
 
                 hasVisibleTech = true;
                 const canAfford = state.units >= u.cost;
-                
                 const item = document.createElement('div');
                 item.className = `tech-item ${canAfford ? '' : 'too-expensive'}`;
                 item.innerHTML = `${u.icon}`;
-                
                 item.onmouseenter = (e) => showTooltip(e, u);
                 item.onmouseleave = () => hideTooltip();
                 item.onmousemove = (e) => moveTooltip(e);
-
                 item.onclick = () => {
-                    buyUpgrade(u);
-                    hideTooltip(); // Hide immediately on click
+                    if (state.units >= u.cost) {
+                        state.units -= u.cost;
+                        state.upgrades.push(u.id);
+                        saveGame();
+                        updateUI();
+                    }
+                    hideTooltip(); 
                 };
                 els.techContainer.appendChild(item);
             });
@@ -631,47 +965,61 @@
             }
         }
 
-        function buyUpgrade(u) {
-            if (state.units >= u.cost) {
-                state.units -= u.cost;
-                state.upgrades.push(u.id);
-                saveGame();
-                updateUI();
+        function updateMultiTool() {
+            els.mtContainer.innerHTML = '';
+            let hasVisible = false;
+
+            MULTI_TOOL_DEF.forEach(u => {
+                if(state.multiTool.includes(u.id)) return; 
+                hasVisible = true;
+                const canAfford = state.units >= u.cost;
+                const item = document.createElement('div');
+                item.className = `tech-item ${canAfford ? '' : 'too-expensive'}`;
+                item.innerHTML = `${u.icon}`;
+                item.style.borderColor = 'var(--accent-orange)'; 
+                item.onmouseenter = (e) => showTooltip(e, u, true);
+                item.onmouseleave = () => hideTooltip();
+                item.onmousemove = (e) => moveTooltip(e);
+                item.onclick = () => {
+                    if (state.units >= u.cost) {
+                        state.units -= u.cost;
+                        state.multiTool.push(u.id);
+                        saveGame();
+                        updateUI();
+                    }
+                    hideTooltip();
+                }
+                els.mtContainer.appendChild(item);
+            });
+
+            if (!hasVisible && els.mtContainer.children.length === 0) {
+                els.mtContainer.innerHTML = '<div style="grid-column:span 5; text-align:center; color:#555; font-size:0.8rem;">All Multi-Tool upgrades installed.</div>';
             }
         }
 
         function updateShop() {
             els.upgrades.innerHTML = '';
-            
+            const currentBuildings = getCurrentPlanetBuildings();
+
             BUILDINGS_DEF.forEach((b, index) => {
-                const count = state.buildings[b.id] || 0;
+                const count = currentBuildings[b.id] || 0;
                 const cost = getBuildingCost(b.id);
                 const mult = getBuildingMultiplier(b.id);
                 const currentProd = b.prod * mult;
-                
                 const prevBuilding = index > 0 ? BUILDINGS_DEF[index - 1] : null;
-                const prevOwned = prevBuilding ? (state.buildings[prevBuilding.id] || 0) : 10;
+                const prevOwned = prevBuilding ? (currentBuildings[prevBuilding.id] || 0) : 10;
                 
                 let isVisible = false;
                 let isMystery = false;
-
                 if (index === 0) isVisible = true; 
                 else if (prevOwned >= 10) isVisible = true; 
                 else if (state.totalUnits >= b.cost * 0.5) isMystery = true; 
-                
                 if (!isVisible && !isMystery) return; 
 
                 const card = document.createElement('div');
-                
                 if (isMystery) {
                     card.className = 'upgrade-card locked';
-                    card.innerHTML = `
-                        <div class="icon-box">?</div>
-                        <div class="upgrade-info">
-                            <span class="upgrade-name">Unknown Signal</span>
-                            <div class="upgrade-cost">Unlock previous tech to decrypt</div>
-                        </div>
-                    `;
+                    card.innerHTML = `<div class="icon-box">?</div><div class="upgrade-info"><span class="upgrade-name">Unknown Signal</span><div class="upgrade-cost">Unlock previous tech to decrypt</div></div>`;
                 } else {
                     const canAfford = state.units >= cost;
                     card.className = `upgrade-card ${canAfford ? '' : 'disabled'}`;
@@ -680,9 +1028,7 @@
                         <div class="icon-box">${b.icon}</div>
                         <div class="upgrade-info">
                             <span class="upgrade-name">${b.name}</span>
-                            <div class="upgrade-cost">${cost.toLocaleString()} Units 
-                                <span class="upgrade-production">(+${currentProd.toFixed(1)}/s)</span>
-                            </div>
+                            <div class="upgrade-cost">${cost.toLocaleString()} Units <span class="upgrade-production">(+${currentProd.toFixed(1)}/s)</span></div>
                         </div>
                         <div class="upgrade-owned">${count}</div>
                     `;
@@ -695,27 +1041,143 @@
             const cost = getBuildingCost(id);
             if (state.units >= cost) {
                 state.units -= cost;
-                state.buildings[id] = (state.buildings[id] || 0) + 1;
+                if (!state.planetBuildings[state.currentPlanetId]) state.planetBuildings[state.currentPlanetId] = {};
+                if (!state.planetBuildings[state.currentPlanetId][id]) state.planetBuildings[state.currentPlanetId][id] = 0;
+                state.planetBuildings[state.currentPlanetId][id]++;
                 renderVisuals();
                 updateUI();
                 saveGame();
             }
         }
 
-        function toggleTech() {
-            const container = document.getElementById('tech-container');
-            container.classList.toggle('collapsed');
+        function toggleTech() { document.getElementById('tech-container').classList.toggle('collapsed'); }
+        function toggleMultiTool() { document.getElementById('multitool-container').classList.toggle('collapsed'); }
+
+        // --- SPACE STATION (MARKET) ---
+        function updateStation() {
+            if(!document.getElementById('station-modal').classList.contains('active')) return;
+
+            const list = els.stationList;
+            list.innerHTML = '';
+
+            Object.keys(RESOURCES).forEach(key => {
+                const res = RESOURCES[key];
+                const owned = Math.floor(state.inventory[key] || 0);
+                
+                // Show ALL resources regardless of quantity to prevent layout shift
+                
+                const div = document.createElement('div');
+                div.className = 'trade-row';
+                div.innerHTML = `
+                    <div style="display:flex; align-items:center;">
+                        <span style="font-size:1.5rem; margin-right:10px;">${res.icon}</span>
+                        <div>
+                            <div style="font-weight:bold; color:var(--text-main);">${res.name}</div>
+                            <div style="font-size:0.8rem; color:var(--text-dim);">Value: ${res.value} Units</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="margin-bottom:5px; color:var(--accent-cyan); font-weight:bold;">${owned.toLocaleString()}</div>
+                        <button class="sell-btn" id="sell-${key}">SELL ALL</button>
+                    </div>
+                `;
+                
+                const btn = div.querySelector(`#sell-${key}`);
+                btn.onclick = () => sellResource(key);
+                if (owned <= 0) btn.disabled = true;
+
+                list.appendChild(div);
+            });
         }
 
-        // --- Interaction ---
+        function sellResource(key) {
+            const count = Math.floor(state.inventory[key] || 0);
+            if (count > 0) {
+                const value = RESOURCES[key].value;
+                const total = count * value;
+                state.units += total;
+                state.totalUnits += total; 
+                state.inventory[key] = 0;
+                
+                spawnFloatingText(window.innerWidth/2, window.innerHeight/2, `SOLD: +${total.toLocaleString()} Units`, 'var(--accent-orange)');
+                updateUI();
+                saveGame();
+            }
+        }
+
+        // --- Interaction & Sentinel Logic ---
 
         function handleMine(e) {
-            const clickVal = 1 * getMultiplier();
-            state.units += clickVal;
-            state.totalUnits += clickVal;
+            if (sentinelActive) {
+                 spawnFloatingText(e.clientX, e.clientY, `BLOCKED!`, 'var(--accent-red)');
+                 return;
+            }
+
+            if (state.multiTool.includes('mt_terr') && Math.random() < 0.01) {
+                const burst = getCurrentPlanetCPS() * 10;
+                if (burst > 0) {
+                    const planet = getPlanetDef(state.currentPlanetId);
+                    if(planet) {
+                        state.inventory[planet.resource] = (state.inventory[planet.resource] || 0) + burst;
+                        spawnFloatingText(e.clientX, e.clientY - 30, `BURST! +${Math.floor(burst)} ${planet.resName}`, 'var(--accent-purple)');
+                    }
+                }
+            }
+
+            const clickVal = calculateClickPower();
+            const planet = getPlanetDef(state.currentPlanetId);
+            const resType = planet ? planet.resource : 'carbon';
             
-            spawnFloatingText(e.clientX, e.clientY, `+${clickVal.toFixed(1)}`);
+            if(!state.inventory[resType]) state.inventory[resType] = 0;
+            state.inventory[resType] += clickVal;
+            
+            if(state.heat < 100) {
+                let heatMod = 1;
+                if (state.multiTool.includes('mt_cloak')) heatMod = 0.7; 
+                state.heat += (CONFIG.heatGain * heatMod);
+                if(state.heat >= 100) triggerSentinel();
+            }
+
+            spawnFloatingText(e.clientX, e.clientY, `+${clickVal.toFixed(1)} ${planet.resName}`);
             updateUI();
+        }
+
+        function triggerSentinel() {
+            sentinelActive = true;
+            state.heat = 100;
+            let hp = CONFIG.sentinelHp;
+            let totalColonies = 0;
+            Object.values(state.planetBuildings).forEach(pb => totalColonies += (pb['colony'] || 0));
+            if (state.multiTool.includes('mt_def') && totalColonies >= 50) {
+                hp = Math.ceil(hp * 0.5);
+            }
+            currentSentinelHp = hp;
+            els.sentinelDrone.style.display = 'flex';
+            els.planetContainer.classList.add('under-attack');
+        }
+
+        function damageSentinel(e) {
+            e.stopPropagation(); 
+            let dmg = 1;
+            if (state.multiTool.includes('mt_bolt')) dmg = 3;
+            currentSentinelHp -= dmg;
+            spawnFloatingText(e.clientX, e.clientY, `-${dmg}`, 'red');
+            els.sentinelDrone.style.transform = `translate(-50%, -50%) scale(${0.9 + Math.random()*0.2})`;
+            setTimeout(() => { els.sentinelDrone.style.transform = `translate(-50%, -50%)`; }, 50);
+            checkSentinelDeath();
+        }
+
+        function checkSentinelDeath() {
+            if (currentSentinelHp <= 0 && sentinelActive) {
+                sentinelActive = false;
+                state.heat = 0;
+                els.sentinelDrone.style.display = 'none';
+                els.planetContainer.classList.remove('under-attack');
+                
+                const reward = getCurrentPlanetCPS() * 30 + 500; 
+                state.units += reward;
+                spawnFloatingText(window.innerWidth/2, window.innerHeight/2, `BOUNTY: +${Math.floor(reward)} Units`, 'var(--accent-cyan)');
+            }
         }
 
         function spawnFloatingText(x, y, text, color = null) {
@@ -729,52 +1191,93 @@
             setTimeout(() => el.remove(), 1000);
         }
 
-        // --- Meteors ---
         function trySpawnMeteor() {
             if (Math.random() > 0.05) return;
-
             const meteor = document.createElement('div');
             meteor.className = 'meteor';
-            
             const startY = Math.random() * (window.innerHeight - 100);
             meteor.style.top = `${startY}px`;
             meteor.style.left = `-100px`; 
-
             document.body.appendChild(meteor);
-
             let posX = -100;
             let posY = startY;
             const speed = 3 + Math.random() * 3;
-
             const move = () => {
                 if (!meteor.isConnected) return; 
                 posX += speed;
                 posY += speed * 0.5; 
                 meteor.style.transform = `translate(${posX}px, ${posY}px) rotate(-45deg)`;
-                
-                if (posX > window.innerWidth + 100) {
-                    meteor.remove();
-                } else {
-                    requestAnimationFrame(move);
-                }
+                if (posX > window.innerWidth + 100) meteor.remove();
+                else requestAnimationFrame(move);
             };
             requestAnimationFrame(move);
-
             meteor.onclick = (e) => {
                 e.stopPropagation();
-                const reward = calculateCPS() * 60 + 100; 
-                state.units += reward;
-                spawnFloatingText(e.clientX, e.clientY, `+${Math.floor(reward)} ☄️`, '#ff5555');
+                const reward = calculateClickPower() * 50; 
+                const planet = getPlanetDef(state.currentPlanetId);
+                const res = planet ? planet.resource : 'carbon';
+                state.inventory[res] = (state.inventory[res] || 0) + reward;
+                spawnFloatingText(e.clientX, e.clientY, `+${Math.floor(reward)} ${planet.resName} ☄️`, '#ff5555');
                 meteor.remove();
             };
         }
 
-        // --- Modal Systems ---
+        function attemptPrestige() {
+            if(state.units < 1000000) {
+                showAlert("Insufficient Units. Return when you have gathered 1,000,000 Units.");
+                return;
+            }
+            showConfirm("ARE YOU SURE? Resetting simulation...", () => {
+                state.prestige++;
+                state.prestigeMult += 0.5; 
+                state.units = 0;
+                state.inventory = { carbon: 0, ferrite: 0, sodium: 0, chromatic: 0 };
+                state.planetBuildings = {}; 
+                state.bases = []; // Reset bases
+                state.upgrades = [];
+                state.multiTool = []; 
+                state.heat = 0;
+                state.planetBuildings['p1'] = {};
+                // Wipe discovered systems EXCEPT Bases? No, full prestige wipe usually.
+                // Keeping charts but resetting ownership.
+                state.unlockedPlanets.forEach(pid => {
+                    state.planetBuildings[pid] = {};
+                    BUILDINGS_DEF.forEach(b => state.planetBuildings[pid][b.id] = 0);
+                });
+                
+                saveGame();
+                location.reload();
+            });
+        }
 
+        // --- Base System ---
+        function claimBase(planetId) {
+            if (state.bases.length >= 10) {
+                showAlert("Base limit reached (10/10). Abandon an old base first.");
+                return;
+            }
+            if (!state.bases.includes(planetId)) {
+                state.bases.push(planetId);
+                saveGame();
+                renderTravel(); // Refresh UI
+                showAlert("Base Computer Online. Teleport Signal Established.");
+            }
+        }
+
+        function abandonBase(planetId) {
+            showConfirm("Abandon this base? You will lose quick access.", () => {
+                state.bases = state.bases.filter(id => id !== planetId);
+                saveGame();
+                renderTravel();
+            });
+        }
+
+        // --- Modal Systems ---
         function openModal(id) {
             document.getElementById(id).classList.add('active');
             if (id === 'missions-modal') renderMissions();
             if (id === 'travel-modal') renderTravel();
+            if (id === 'station-modal') updateStation();
         }
         function closeModals() {
             document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
@@ -801,7 +1304,6 @@
         function renderMissions() {
             checkMissionReset();
             els.missionList.innerHTML = '';
-            
             const now = Date.now();
             const nextReset = state.lastMissionReset + CONFIG.missionResetTime;
             const diff = nextReset - now;
@@ -814,7 +1316,8 @@
                 const div = document.createElement('div');
                 div.className = `mission-item ${isDone ? 'completed' : ''}`;
                 
-                const reward = Math.floor((calculateCPS() || 10) * m.rewardMult);
+                // Mission reward now gives UNITS directly (bounties)
+                const reward = Math.floor((getCurrentPlanetCPS() || 10) * m.rewardMult);
                 
                 div.innerHTML = `
                     <div>
@@ -823,7 +1326,7 @@
                         <small style="color: ${m.risk > 0.5 ? '#ff5555' : '#64ffda'}">Risk: ${m.risk * 100}%</small>
                     </div>
                     <div>
-                        <div style="text-align:right; margin-bottom:5px; color:#ff9f1c;">Reward: ${reward.toLocaleString()}</div>
+                        <div style="text-align:right; margin-bottom:5px; color:#ff9f1c;">Reward: ${reward.toLocaleString()} Units</div>
                         <button class="mission-btn" onclick="attemptMission(${m.id}, ${m.risk}, ${reward})" ${isDone ? 'disabled' : ''}>
                             ${isDone ? 'Done' : 'Deploy'}
                         </button>
@@ -837,9 +1340,9 @@
             if (Math.random() > risk) {
                 state.units += reward;
                 state.totalUnits += reward;
-                alert(`Mission Success! Commander retrieved ${reward.toLocaleString()} Units.`);
+                showAlert(`Mission Success! Commander retrieved ${reward.toLocaleString()} Units.`);
             } else {
-                alert("Mission Failed. The fleet returned empty-handed.");
+                showAlert("Mission Failed. The fleet returned empty-handed.");
             }
             state.completedMissions.push(id);
             saveGame();
@@ -850,33 +1353,128 @@
         // --- Planetary Travel ---
         function renderTravel() {
             els.planetList.innerHTML = '';
-            PLANET_TYPES.forEach(p => {
+            
+            // 1. Render Bases at the TOP
+            if (state.bases.length > 0) {
+                const baseLabel = document.createElement('div');
+                baseLabel.style.margin = '10px 0 5px';
+                baseLabel.style.color = 'var(--accent-purple)';
+                baseLabel.style.fontSize = '0.9rem';
+                baseLabel.style.borderBottom = '1px solid var(--accent-purple)';
+                baseLabel.innerHTML = `📡 Established Bases (${state.bases.length}/10)`;
+                els.planetList.appendChild(baseLabel);
+
+                const bases = state.bases.map(id => getPlanetDef(id)).filter(p => p);
+                renderPlanetGroup(bases, true);
+            }
+
+            // 2. Render Charts (Everything else)
+            const chartLabel = document.createElement('div');
+            chartLabel.style.margin = '20px 0 5px';
+            chartLabel.style.color = 'var(--text-dim)';
+            chartLabel.style.fontSize = '0.9rem';
+            chartLabel.style.borderBottom = '1px solid var(--ui-border)';
+            chartLabel.innerHTML = `🗺️ Planetary Charts`;
+            els.planetList.appendChild(chartLabel);
+
+            // Filter out planets that are already bases to avoid duplicates? 
+            // The user might want to see them in list too? 
+            // Let's filter them out from the bottom list to reduce scrolling as requested.
+            const allPlanets = [...CORE_PLANETS, ...state.discoveredSystems];
+            const charts = allPlanets.filter(p => !state.bases.includes(p.id));
+            
+            renderPlanetGroup(charts, false);
+        }
+        
+        function renderPlanetGroup(planets, isBaseSection) {
+            planets.forEach(p => {
                 const isUnlocked = state.unlockedPlanets.includes(p.id);
                 const isCurrent = state.currentPlanetId === p.id;
+                const isBase = state.bases.includes(p.id);
                 
                 const div = document.createElement('div');
                 div.className = `planet-item ${isCurrent ? 'active' : ''}`;
-                div.onclick = () => {
+                
+                // Click to Travel logic handled by button now? Or item click?
+                // Let's keep item click for travel, buttons for other actions.
+                div.onclick = (e) => {
+                    // Prevent travel if clicking a button inside
+                    if (e.target.tagName === 'BUTTON') return;
+                    
                     if (!isUnlocked) buyPlanet(p.id);
                     else switchPlanet(p.id);
                 };
 
-                const btnText = isCurrent ? 'Current Location' : (isUnlocked ? 'Travel' : `Unlock (${p.cost.toLocaleString()})`);
-                
+                let actionBtn = '';
+                if (isUnlocked) {
+                    if (isBase) {
+                        actionBtn = `<button class="nav-btn" style="font-size:0.7rem; border-color:var(--accent-red); color:var(--accent-red);" onclick="abandonBase('${p.id}')">Abandon Base</button>`;
+                    } else {
+                        // Show Claim button if not base
+                        actionBtn = `<button class="nav-btn" style="font-size:0.7rem; border-color:var(--accent-purple); color:var(--accent-purple);" onclick="claimBase('${p.id}')">Claim Base</button>`;
+                    }
+                } else {
+                    actionBtn = `<span style="font-size:0.7rem; color:var(--accent-orange)">Unlock: ${p.cost.toLocaleString()}</span>`;
+                }
+
+                // Show CPS if Base
+                let statsHtml = `<small style="color:var(--text-dim)">${p.desc}</small>`;
+                if (isBaseSection) {
+                    const output = getPlanetCPS(p.id);
+                    statsHtml = `<small style="color:var(--accent-cyan)">Output: ${output.toFixed(1)} ${p.resName}/s</small>`;
+                }
+
                 div.innerHTML = `
                     <div class="planet-preview" style="background:${p.color}"></div>
                     <div style="flex:1">
-                        <strong>${p.name}</strong> <span style="color:var(--accent-cyan)">x${p.multiplier} Prod</span><br>
-                        <small style="color:var(--text-dim)">${p.desc}</small>
+                        <strong>${p.name}</strong> <span style="color:var(--accent-cyan)">x${p.multiplier.toFixed(1)}</span><br>
+                        ${statsHtml}
                     </div>
-                    <button class="nav-btn" style="font-size:0.8rem">${btnText}</button>
+                    <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
+                        ${isCurrent ? '<span style="font-size:0.7rem; color:var(--accent-cyan)">[LOCATED]</span>' : ''}
+                        ${actionBtn}
+                    </div>
                 `;
                 els.planetList.appendChild(div);
             });
         }
 
+        function scanNewSystem() {
+            if (state.units >= CONFIG.scanCost) {
+                state.units -= CONFIG.scanCost;
+                
+                const prefix = PROC_NAMES_PREFIX[Math.floor(Math.random() * PROC_NAMES_PREFIX.length)];
+                const suffix = PROC_NAMES_SUFFIX[Math.floor(Math.random() * PROC_NAMES_SUFFIX.length)];
+                const type = PROC_TYPES[Math.floor(Math.random() * PROC_TYPES.length)];
+                const mult = (Math.random() * (type.maxMult - type.minMult) + type.minMult).toFixed(2);
+                
+                const newPlanet = {
+                    id: `proc_${Date.now()}`,
+                    name: `${prefix} ${suffix}`,
+                    type: 'procedural',
+                    cost: 0, 
+                    color: type.color,
+                    multiplier: parseFloat(mult),
+                    resource: type.resource,
+                    resName: type.resName,
+                    desc: `${type.type} World. Signal Detected.`
+                };
+                
+                state.discoveredSystems.push(newPlanet);
+                state.unlockedPlanets.push(newPlanet.id);
+                
+                showAlert(`System Detected: ${newPlanet.name} (x${newPlanet.multiplier} Multiplier).`);
+                
+                saveGame();
+                updateUI();
+                renderTravel(); 
+            } else {
+                showAlert("Insufficient funds to initiate Deep Space Scan.");
+            }
+        }
+
         function buyPlanet(id) {
-            const p = PLANET_TYPES.find(x => x.id === id);
+            const p = getPlanetDef(id);
             if (state.units >= p.cost) {
                 state.units -= p.cost;
                 state.unlockedPlanets.push(id);
@@ -902,11 +1500,22 @@
             const dt = (now - lastTime) / 1000;
             lastTime = now;
 
-            const cps = calculateCPS();
-            if (cps > 0) {
-                const income = cps * dt;
-                state.units += income;
-                state.totalUnits += income;
+            if(!sentinelActive) {
+                calculateResourceGain(dt);
+                if(state.heat > 0) {
+                    state.heat -= CONFIG.heatDecay * dt;
+                    if(state.heat < 0) state.heat = 0;
+                }
+            } else {
+                if (state.multiTool.includes('mt_mino')) {
+                    minotaurTimer += dt;
+                    if (minotaurTimer >= 1.0) { 
+                        currentSentinelHp -= 1;
+                        spawnFloatingText(window.innerWidth/2, window.innerHeight/2 - 50, "-1 (AI)", "cyan");
+                        checkSentinelDeath();
+                        minotaurTimer = 0;
+                    }
+                }
             }
 
             timer += dt;
@@ -922,23 +1531,47 @@
         setInterval(() => { saveGame(); }, CONFIG.autoSave);
 
         function saveGame() {
-            localStorage.setItem('StarMinerDeep', JSON.stringify(state));
+            localStorage.setItem('NoMansClickerSave', JSON.stringify(state));
         }
         function loadGame() {
-            const d = localStorage.getItem('StarMinerDeep');
+            const d = localStorage.getItem('NoMansClickerSave');
             if (d) {
                 try {
                     const p = JSON.parse(d);
                     state = { ...state, ...p };
+                    // Migration checks
                     if (!state.upgrades) state.upgrades = [];
+                    if (!state.multiTool) state.multiTool = [];
+                    if (!state.discoveredSystems) state.discoveredSystems = [];
+                    if (!state.bases) state.bases = []; // Init bases
+                    if (typeof state.heat === 'undefined') state.heat = 0;
+                    if (typeof state.prestige === 'undefined') state.prestige = 0;
+                    if (typeof state.prestigeMult === 'undefined') state.prestigeMult = 1;
+                    if (!state.inventory) state.inventory = { carbon: 0, ferrite: 0, sodium: 0, chromatic: 0 };
+                    
+                    if (!state.planetBuildings) {
+                        state.planetBuildings = {};
+                        if (state.buildings) {
+                            state.planetBuildings['p1'] = { ...state.buildings };
+                        }
+                    }
+                    state.unlockedPlanets.forEach(pid => {
+                        if (!state.planetBuildings[pid]) {
+                            state.planetBuildings[pid] = {};
+                            BUILDINGS_DEF.forEach(b => state.planetBuildings[pid][b.id] = 0);
+                        }
+                    });
+
                 } catch(e) {}
+            } else {
+                 state.planetBuildings = {};
+                 state.planetBuildings['p1'] = {};
+                 BUILDINGS_DEF.forEach(b => state.planetBuildings['p1'][b.id] = 0);
             }
         }
 
         window.onload = () => {
             loadGame();
-            BUILDINGS_DEF.forEach(b => { if(state.buildings[b.id] === undefined) state.buildings[b.id] = 0; });
-            
             renderVisuals();
             updateUI();
             requestAnimationFrame(loop);
@@ -946,7 +1579,4 @@
 
     </script>
 </body>
-
 </html>
-
-
