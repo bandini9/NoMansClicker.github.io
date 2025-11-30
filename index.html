@@ -359,6 +359,11 @@
         }
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.2); } }
 
+        /* --- Z-INDEX FIX FOR SYSTEM MODALS --- */
+        #alert-modal, #confirm-modal {
+            z-index: 3000;
+        }
+
         @media (max-width: 768px) {
             .game-container { flex-direction: column; }
             .viewport { flex: 1; min-height: 50vh; }
@@ -457,11 +462,11 @@
         <div class="modal-window">
             <div class="modal-header">
                 <h3>System Alert</h3>
-                <span class="modal-close" onclick="closeModals()">&times;</span>
+                <span class="modal-close" onclick="closeSpecificModal('alert-modal')">&times;</span>
             </div>
             <div class="modal-content" style="text-align: center;">
                 <p id="alert-message" style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-main);">Message</p>
-                <button class="nav-btn" onclick="closeModals()" style="width: 100%; justify-content: center;">ACKNOWLEDGE</button>
+                <button class="nav-btn" onclick="closeSpecificModal('alert-modal')" style="width: 100%; justify-content: center;">ACKNOWLEDGE</button>
             </div>
         </div>
     </div>
@@ -694,6 +699,10 @@
         function showAlert(msg) {
             document.getElementById('alert-message').textContent = msg;
             openModal('alert-modal');
+        }
+
+        function closeSpecificModal(id) {
+            document.getElementById(id).classList.remove('active');
         }
 
         function showConfirm(msg, onConfirm) {
@@ -1581,4 +1590,3 @@
     </script>
 </body>
 </html>
-
